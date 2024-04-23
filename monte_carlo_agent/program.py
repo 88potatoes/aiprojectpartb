@@ -25,6 +25,7 @@ class Agent:
         self._color = color
         self.first_turn = True
         self.monte_carlo_root = None
+        self.turn_count = 1
 
     def action(self, **referee: dict) -> Action:
         """
@@ -80,7 +81,8 @@ class Agent:
             
             # now should be at a leaf node
             if node.n == 0:
-                # rollout
+                # hasn't been rolled out yet
+                res = rollout(node.state, node.turn, node.player)
                 pass
             else:
                 # expand
@@ -99,17 +101,28 @@ class Agent:
         """
         Updating the state
         """
-        self.monte_carlo_root = MonteCarloNode(get_next_state(self.current_state, action, color))
+
+        if color == PlayerColor.RED:
+            next_player = PlayerColor.BLUE
+        else:
+            next_player = PlayerColor.RED
+        
+        self.monte_carlo_root = MonteCarloNode(get_next_state(self.monte_carlo_root.state, action, color), None, self.turn_count, next_player)
+        
+        self.turn_count += 1
+            
 
 
 class MonteCarloNode:
-    def __init__(self, state: dict, parent):
+    def __init__(self, state: dict, parent, turn: int, player):
         self.state = state
         self.t = 0
         self.n = 0
         self.ubc1 = float('inf')
         self.children = []
         self.parent = parent
+        self.turn = turn
+        self.player = player
 
     def increase_t(self, score):
         self.t += score
