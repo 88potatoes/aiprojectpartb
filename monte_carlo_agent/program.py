@@ -60,7 +60,6 @@ class Agent:
 
         runs = 0
         while (runs < TOTAL_RUNS):
-            runs += 1
 
             node = self.monte_carlo_root
 
@@ -83,13 +82,28 @@ class Agent:
             if node.n == 0:
                 # hasn't been rolled out yet
                 res = rollout(node.state, node.turn, node.player)
-                pass
+                node.increase_t(res)
+                node.calculate_ubc1(runs)
             else:
-                # expand
+                # expand one state
+                possible_moves = get_possible_moves(node.state, node.player)
+                random_next_move = possible_moves[random.randrange(0, len(possible_moves))]
+                next_state = get_next_state(node.state, random_next_move, node.player)
+                next_player = None
+                if node.player == PlayerColor.RED:
+                    next_player = PlayerColor.BLUE
+                else:
+                    next_player = PlayerColor.RED
+                new_node = MonteCarloNode(next_state, node, node.turn + 1, next_player)
+
                 # rollout
-                pass
+                res = rollout(new_node.state, new_node.turn, new_node.player)
+                new_node.increase_t(res)
+                node.calculate_ubc1(runs)
             
             # backpropogate
+
+            runs += 1
 
 
         possible_moves = get_possible_moves(self.current_state, self._color)
@@ -108,7 +122,7 @@ class Agent:
             next_player = PlayerColor.RED
         
         self.monte_carlo_root = MonteCarloNode(get_next_state(self.monte_carlo_root.state, action, color), None, self.turn_count, next_player)
-        
+
         self.turn_count += 1
             
 
