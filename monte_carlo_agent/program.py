@@ -2,15 +2,15 @@
 # Project Part B: Game Playing Agent
 
 import math
-from helpers import get_next_state, get_possible_moves
+from helpers import get_next_state, get_possible_moves, render_board
 from referee.game import PlayerColor, Action, PlaceAction, Coord, BOARD_N
 from referee.game.coord import Direction
 import random
 
-TOTAL_RUNS = 100
+TOTAL_RUNS = 10
 MAX_TURNS = 150
 C = 2
-EXPANSION_FACTOR = 10
+EXPANSION_FACTOR = 6
 
 class Agent:
     """
@@ -25,7 +25,7 @@ class Agent:
         """
         self._color = color
         self.first_turn = True
-        self.monte_carlo_root = None
+        self.monte_carlo_root = MonteCarloNode({}, None, 0, PlayerColor.RED, None)
         self.turn_count = 1
 
     def action(self, **referee: dict) -> Action:
@@ -60,31 +60,37 @@ class Agent:
         # all moves after the first one 
         # (MONTE CARLO)
 
-        for _ in range(TOTAL_RUNS):
-
+        for i in range(TOTAL_RUNS):
             root = self.monte_carlo_root
 
             # selection
             leaf = select(root)
 
+            # leaf is terminal state
+            if leaf.is_terminal:
+                result = rollout(leaf)
+                backpropogate(result, leaf)
+                continue
+
             # expansion
             child = expand(leaf)
 
             # simulation
-            result = rollout(child.state, child.turn, child.player)
+            result = rollout(child)
 
             # backpropogate
             backpropogate(result, child)
 
 
-        # selecting highest UBC from immediate children
+        # selecting highest UBC1 from immediate children
         highest_ubc1 = -1
         highest_ubc1_action = None
         for child in self.monte_carlo_root.children:
+            assert(child.n > 0)
             ubc1 = get_ubc1(child)
             if ubc1 > highest_ubc1:
                 highest_ubc1 = ubc1
-                highest_ubc1_action = self.monte_carlo_root.action
+                highest_ubc1_action = child.action
         return highest_ubc1_action
 
     def update(self, color: PlayerColor, action: Action, **referee: dict):
@@ -93,7 +99,7 @@ class Agent:
         """
 
         next_player = get_next_player(color)
-        self.monte_carlo_root = MonteCarloNode(get_next_state(self.monte_carlo_root.state, action, color), None, self.turn_count, next_player)
+        self.monte_carlo_root = MonteCarloNode(get_next_state(self.monte_carlo_root.state, action, color), None, self.turn_count, next_player, action)
 
         self.turn_count += 1
             
@@ -108,6 +114,7 @@ class MonteCarloNode:
         self.turn = turn
         self.player = player
         self.action = action
+        self.is_terminal = False
 
         # we consider a node to be expanded if it has 10 children
         # because i think it's easier to code
@@ -134,8 +141,15 @@ def rollout(child: MonteCarloNode):
     # keep rolling out until one player has no available plays left or the max turns has been reached
     current_player = child.player
     current_state = child.state
+    current_turn = child.turn
+
+    # for detecing if we are rolling out a terminal state
+    rollout_occurred = False
     
     while current_turn <= MAX_TURNS:
+        if not rollout_occurred:
+            rollout_occurred = True
+
         random_move = get_random_move(current_state, current_player)
 
         if not random_move:
@@ -150,12 +164,24 @@ def rollout(child: MonteCarloNode):
 
         current_turn += 1
         current_player = get_next_player(current_player)
+        current_state = get_next_state(current_state, random_move, current_player)
+
+    # for if the child is a terminal state
+    if not rollout_occurred:
+        child.is_terminal = True
+        if current_player == PlayerColor.BLUE:
+            # RED WINS
+            return 0
+        else:
+            # BLUE WINS
+            return 1
+
 
     # max turns has been reached
     # return based on whoever has more squares
     reds = 0
     blues = 0
-    for _, color in current_state:
+    for _, color in current_state.items():
         if color == PlayerColor.RED:
             reds += 1
         else:
@@ -171,7 +197,7 @@ def rollout(child: MonteCarloNode):
         # blue won
         return 1
 
-def get_random_move(state: dict, player: PlayerColor):
+def get_random_move(state: dict, player: PlayerColor) -> PlaceAction:
     possible_moves = get_possible_moves(state, player)
     if not possible_moves:
         return None
@@ -187,26 +213,30 @@ def get_next_player(player: PlayerColor):
 
 def get_ubc1(node: MonteCarloNode):
     assert node.parent != None # should never be calling UBC1 on the root node
+    assert(node.parent.n > 0)
     return (node.t / node.n) + C * math.sqrt(math.log(node.parent.n) / node.n)
 
 
-def select(node: MonteCarloNode):
+def select(node: MonteCarloNode) -> MonteCarloNode:
     """
     MONTE CARLO SELECTION
     """    
     current_node = node
-    while current_node.children:
+    while current_node.expanded:
+        # find another node
 
         # select the highest UBC1 node
         highest_ubc1_node = current_node
         highest_ubc1 = -1
         for child in current_node.children:
+            assert child.n > 0
+            assert child.parent.n > 0
             ubc1 = get_ubc1(child)
             if ubc1 > highest_ubc1:
                 highest_ubc1 = ubc1
                 highest_ubc1_node = child
 
-            # TODO can optimise by short circuiting
+            # TODO can optimise by short circuiting upon hitting inf
             # TODO optimise by having ubc get called once and stored within the node
 
         # make the highest UBC1 node the next node in the chain
@@ -214,19 +244,22 @@ def select(node: MonteCarloNode):
     
     return current_node
 
-def expand(leaf: MonteCarloNode):
+def expand(leaf: MonteCarloNode) -> MonteCarloNode:
     """
     MONTE CARLO EXPANSION
-    """    
+    """
     random_move = get_random_move(leaf.state, leaf.player)
+    assert random_move != None
     next_state = get_next_state(leaf.state, random_move, leaf.player)
     next_player = get_next_player(leaf.player)
-    return MonteCarloNode(next_state, leaf, leaf.turn + 1, next_player, random_move)
+    child = MonteCarloNode(next_state, leaf, leaf.turn + 1, next_player, random_move)
+    leaf.append_child(child)
+    return child
 
 def backpropogate(result, node: MonteCarloNode):
     """
     MONTE CARLO BACKPROPOGATION
     """    
-    while node.parent:
+    while node:
         node.increase_t(result)
         node = node.parent
