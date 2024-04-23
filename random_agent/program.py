@@ -31,7 +31,7 @@ class Agent:
             self.first_turn = False
             match self._color:
                 case PlayerColor.RED:
-                    print("Testing: RED is playing a PLACE action")
+                    # print("Testing: RED is playing a PLACE action")
                     return PlaceAction(
                         Coord(3, 3), 
                         Coord(3, 4), 
@@ -39,7 +39,7 @@ class Agent:
                         Coord(4, 4)
                     )
                 case PlayerColor.BLUE:
-                    print("Testing: BLUE is playing a PLACE action")
+                    # print("Testing: BLUE is playing a PLACE action")
                     return PlaceAction(
                         Coord(2, 3), 
                         Coord(2, 4), 
