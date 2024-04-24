@@ -65,6 +65,8 @@ class Agent:
 
             # selection
             leaf = select(root)
+            # print(render_board(leaf.state, None, ansi=True))
+            # print('is_terminal', leaf.is_terminal)
 
             # leaf is terminal state
             if leaf.is_terminal:
@@ -72,8 +74,15 @@ class Agent:
                 backpropogate(result, leaf)
                 continue
 
+
             # expansion
             child = expand(leaf)
+
+            if not child:
+                # terminal state
+                result = rollout(leaf)
+                backpropogate(result, leaf)
+                continue
 
             # simulation
             result = rollout(child)
@@ -85,7 +94,7 @@ class Agent:
         # selecting highest UBC1 from immediate children
         highest_score = -1
         highest_score_action = None
-        for child in self.monte_carloscoret.children:
+        for child in self.monte_carlo_root.children:
             assert(child.n > 0)
             score = child.t / child.n
             if score > highest_score:
@@ -142,13 +151,8 @@ def rollout(child: MonteCarloNode):
     current_player = child.player
     current_state = child.state
     current_turn = child.turn
-
-    # for detecing if we are rolling out a terminal state
-    rollout_occurred = False
     
     while current_turn <= MAX_TURNS:
-        if not rollout_occurred:
-            rollout_occurred = True
 
         random_move = get_random_move(current_state, current_player)
 
@@ -165,17 +169,6 @@ def rollout(child: MonteCarloNode):
         current_turn += 1
         current_player = get_next_player(current_player)
         current_state = get_next_state(current_state, random_move, current_player)
-
-    # for if the child is a terminal state
-    if not rollout_occurred:
-        child.is_terminal = True
-        if current_player == PlayerColor.BLUE:
-            # RED WINS
-            return 0
-        else:
-            # BLUE WINS
-            return 1
-
 
     # max turns has been reached
     # return based on whoever has more squares
@@ -231,6 +224,7 @@ def select(node: MonteCarloNode) -> MonteCarloNode:
         for child in current_node.children:
             assert child.n > 0
             assert child.parent.n > 0
+
             ubc1 = get_ubc1(child)
             if ubc1 > highest_ubc1:
                 highest_ubc1 = ubc1
@@ -249,7 +243,11 @@ def expand(leaf: MonteCarloNode) -> MonteCarloNode:
     MONTE CARLO EXPANSION
     """
     random_move = get_random_move(leaf.state, leaf.player)
-    assert random_move != None
+
+    # terminal state
+    if not random_move:
+        return None
+
     next_state = get_next_state(leaf.state, random_move, leaf.player)
     next_player = get_next_player(leaf.player)
     child = MonteCarloNode(next_state, leaf, leaf.turn + 1, next_player, random_move)
