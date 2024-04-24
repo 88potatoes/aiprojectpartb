@@ -177,16 +177,13 @@ def get_next_state(current_state: dict, piece: PlaceAction, color: PlayerColor):
     cleared_cols = set()
 
     current_state_copy = current_state.copy()
-    # print("COPY", current_state_copy)
 
     # places new red squares
     for square in piece.coords:
-        # print(square)
         current_state_copy[square] = color
 
     # getting a grid of filled squares
     grid = [[True if Coord(row, col) in current_state_copy else False for col in range(BOARD_N)] for row in range(BOARD_N)]
-    # pprint(grid)
     
     # gets all full rows
     for row in range(BOARD_N):
