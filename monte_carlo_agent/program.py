@@ -92,15 +92,27 @@ class Agent:
 
 
         # selecting highest UBC1 from immediate children
-        highest_score = -1
-        highest_score_action = None
-        for child in self.monte_carlo_root.children:
-            assert(child.n > 0)
-            score = child.t / child.n
-            if score > highest_score:
-                highest_score = score
-                highest_score_action = child.action
-        return highest_score_action
+        if self._color == PlayerColor.BLUE:
+            highest_score = -1
+            highest_score_action = None
+            for child in self.monte_carlo_root.children:
+                assert(child.n > 0)
+                score = child.t / child.n
+                if score > highest_score:
+                    highest_score = score
+                    highest_score_action = child.action
+            return highest_score_action
+        else:
+            lowest_score = float('inf')
+            lowest_score_action = None
+
+            for child in self.monte_carlo_root.children:
+                assert(child.n > 0)
+                score = child.t / child.n
+                if score < lowest_score:
+                    lowest_score = score
+                    lowest_score_action = child.action
+            return lowest_score_action
 
     def update(self, color: PlayerColor, action: Action, **referee: dict):
         """
