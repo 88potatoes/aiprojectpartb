@@ -2,3 +2,6 @@
 .venv
 *result*
 **pycache**
+
+*.txt
+submission

@@ -2,7 +2,7 @@
 # Project Part B: Game Playing Agent
 
 import math
-from helpers import get_next_state, get_possible_moves, render_board
+from .helpers import get_next_state, get_possible_moves, render_board
 from referee.game import PlayerColor, Action, PlaceAction, Coord, BOARD_N
 from referee.game.coord import Direction
 import random
