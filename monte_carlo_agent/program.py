@@ -5,9 +5,11 @@ import math
 from .helpers import get_next_state, get_possible_moves, render_board
 from referee.game import PlayerColor, Action, PlaceAction, Coord, BOARD_N
 from referee.game.coord import Direction
-import random
+import copy
 
-TOTAL_RUNS = 10
+NO_MOVES = 1
+
+TOTAL_RUNS = 12
 MAX_TURNS = 150
 C = 2
 EXPANSION_FACTOR = 6
@@ -136,6 +138,8 @@ class MonteCarloNode:
         self.player = player
         self.action = action
         self.is_terminal = False
+        self.used_actions = set()
+        self.n_possible_moves = len(get_possible_moves(self.state, self.player))
 
         # we consider a node to be expanded if it has 10 children
         # because i think it's easier to code
@@ -149,8 +153,10 @@ class MonteCarloNode:
         # the function shouldn't be called if the node is already expanded
         assert(len(self.children) < EXPANSION_FACTOR and self.expanded == False)
         self.children.append(node)
-
-        if len(self.children) == EXPANSION_FACTOR:
+        self.used_actions.add(frozenset(node.action.coords))
+        
+        # determining if a node is expanded
+        if len(self.children) == min(self.n_possible_moves, EXPANSION_FACTOR):
             self.expanded = True
 
 
@@ -160,33 +166,32 @@ def rollout(child: MonteCarloNode):
     """    
 
     # keep rolling out until one player has no available plays left or the max turns has been reached
-    current_player = child.player
-    current_state = child.state
-    current_turn = child.turn
+    r_node = copy.deepcopy(child)
     
-    while current_turn <= MAX_TURNS:
+    while r_node.turn <= MAX_TURNS:
 
-        random_move = get_random_move(current_state, current_player)
+        random_move = get_random_move(r_node)
 
         if not random_move:
             # no possible moves
 
-            if current_player == PlayerColor.BLUE:
+            if r_node.player == PlayerColor.BLUE:
                 # RED WINS
                 return 0
             else:
                 # BLUE WINS
                 return 1
 
-        current_turn += 1
-        current_player = get_next_player(current_player)
-        current_state = get_next_state(current_state, random_move, current_player)
+        next_turn = r_node.turn + 1
+        next_player = get_next_player(r_node.player)
+        next_state = get_next_state(r_node.state, random_move, r_node.player)
+        r_node = MonteCarloNode(next_state, None, next_turn, next_player, random_move)
 
     # max turns has been reached
     # return based on whoever has more squares
     reds = 0
     blues = 0
-    for _, color in current_state.items():
+    for _, color in r_node.state.items():
         if color == PlayerColor.RED:
             reds += 1
         else:
@@ -202,12 +207,17 @@ def rollout(child: MonteCarloNode):
         # blue won
         return 1
 
-def get_random_move(state: dict, player: PlayerColor) -> PlaceAction:
-    possible_moves = get_possible_moves(state, player)
+def get_random_move(node: MonteCarloNode) -> PlaceAction:
+    possible_moves = get_possible_moves(node.state, node.player)
     if not possible_moves:
         return None
-    random_move = possible_moves[random.randrange(0, len(possible_moves))]
-    return random_move
+    
+    # returns a random move because possible_moves is already in a random order (i'm pretty sure)
+    for move in possible_moves:
+        if frozenset(move.coords) in node.used_actions:
+            continue
+        return move
+
 
 def get_next_player(player: PlayerColor):
     if player == PlayerColor.RED:
@@ -254,7 +264,7 @@ def expand(leaf: MonteCarloNode) -> MonteCarloNode:
     """
     MONTE CARLO EXPANSION
     """
-    random_move = get_random_move(leaf.state, leaf.player)
+    random_move = get_random_move(leaf)
 
     # terminal state
     if not random_move:
