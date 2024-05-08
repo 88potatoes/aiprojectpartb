@@ -12,6 +12,7 @@ MAX_TURNS = 150
 C = 2
 EXPANSION_FACTOR = 6
 MINIMAX_DEPTH = 1
+N_RANDOM_MOVES = 10
 
 def get_next_player(player: PlayerColor):
     if player == PlayerColor.RED:
@@ -35,6 +36,7 @@ class Agent:
         self.turn_count = 1
         self.first_turn = True
         self.player = color
+        self.no_random_moves = N_RANDOM_MOVES
 
     def update(self, color: PlayerColor, action: Action, **referee: dict):
         """
@@ -75,6 +77,11 @@ class Agent:
                         Coord(2, 6)
                     )
 
+        while self.no_random_moves > 0:
+            self.no_random_moves -= 1
+            possible_moves = get_possible_moves(self.current_state.state, self.player)
+            return possible_moves[random.randrange(len(possible_moves))]
+
         # Depth limited minimax
         possible_moves = get_possible_moves(self.current_state.state, self.player)
         best_move = None
@@ -95,9 +102,9 @@ class Agent:
             best_score = float('inf')
 
             for move in possible_moves:
-                print("h")
                 next_state = get_next_state(self.current_state.state, move, self.player)
                 next_state_score = minimax(Node(PlayerColor.RED, next_state), MINIMAX_DEPTH, True)
+
                 if next_state_score < best_score:
                     best_score = next_state_score
                     best_move = move
@@ -110,6 +117,17 @@ class Node:
     def __init__(self, player: PlayerColor, state: dict[Coord, PlayerColor]):
         self.player = player
         self.state = state
+
+def score2(node: Node):
+    # assumes an end node or final depth
+
+    if node.player == PlayerColor.RED and len(get_possible_moves(node.state, node.player)) == 0:
+        return -1
+    
+    if node.player == PlayerColor.BLUE and len(get_possible_moves(node.state, node.player)) == 0:
+        return 1
+    
+    return 0
 
 def score1(node: Node):
     """
@@ -150,11 +168,12 @@ def score1(node: Node):
 
         return 1 / max_opp_moves
 
-score_function = score1
+# setting the scoring / evaluation function
+score_function = score2
 def minimax(node: Node, depth: int, isMaximisingPlayer: bool):
 
     possible_moves = get_possible_moves(node.state, node.player)
-    print(node.player, len(possible_moves))
+
     # ending state
     if depth == 0 or len(possible_moves) == 0:
         return score_function(node)
@@ -164,7 +183,9 @@ def minimax(node: Node, depth: int, isMaximisingPlayer: bool):
 
         value = -float('inf')
         for move in possible_moves:
+            
             next_state = get_next_state(node.state, move, node.player)
+            # print(render_board(next_state, None, ansi=True))
             value = max(value, minimax(Node(PlayerColor.BLUE, next_state), depth - 1, False))
         return value
     else:
