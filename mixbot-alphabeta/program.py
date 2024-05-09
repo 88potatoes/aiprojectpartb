@@ -8,13 +8,13 @@ from referee.game.coord import Direction
 import random
 import copy
 
-TOTAL_RUNS = 10
+TOTAL_RUNS = 30
 MAX_TURNS = 150
 C = 2
-EXPANSION_FACTOR = 6
-MINIMAX_DEPTH = 3
+EXPANSION_FACTOR = 5
+MINIMAX_DEPTH = 6
 N_RANDOM_MOVES = 6
-EMPTY_SQUARE_CUTOFF = 37
+EMPTY_SQUARE_CUTOFF = 41
 MINIMAX_EXPANSION_CUTOFF = 10
 
 def get_next_player(player: PlayerColor):
@@ -117,7 +117,7 @@ class Agent:
 
                 for move in possible_moves:
                     next_state = get_next_state(self.current_state.state, move, self.player)
-                    next_state_score = minimax(Node(PlayerColor.RED, next_state), MINIMAX_DEPTH, True)
+                    next_state_score = minimax(Node(PlayerColor.RED, next_state), MINIMAX_DEPTH, True, -float('inf'), float('inf'))
                     print("score:", next_state_score)
 
                     if next_state_score < best_score:
