@@ -7,15 +7,23 @@ from referee.game import PlayerColor, Action, PlaceAction, Coord, BOARD_N
 from referee.game.coord import Direction
 import random
 import copy
+import time
 
-TOTAL_RUNS = 10
+# options for monte carlo
+TOTAL_RUNS = 15
 MAX_TURNS = 150
 C = 2
 EXPANSION_FACTOR = 6
-MINIMAX_DEPTH = 3
+
+# options for minimax
+MINIMAX_DEPTH = 5
 N_RANDOM_MOVES = 6
-EMPTY_SQUARE_CUTOFF = 37
-MINIMAX_EXPANSION_CUTOFF = 10
+EMPTY_SQUARE_CUTOFF = 40
+MINIMAX_EXPANSION_CUTOFF = 12
+ESTIMATED_MOVES_PER_GAME = 70
+TOTAL_TIME = 180
+MONTECARLO_TIMELIMIT = TOTAL_TIME / ESTIMATED_MOVES_PER_GAME
+
 
 def get_next_player(player: PlayerColor):
     if player == PlayerColor.RED:
@@ -61,7 +69,7 @@ class Agent:
         RED is the maximising player
         BLUE is the minimising player
         """
-
+        print('time remaining:', referee['time_remaining'])
         # initial move
         if self.first_turn:
             self.first_turn = False
@@ -137,8 +145,11 @@ class Agent:
 
         else:
             print("EXECUTING MONTE CARLO")
+            initial_time = time.time()
+            monte_carlo_runs = 0
 
-            for i in range(TOTAL_RUNS):
+            while time.time() < initial_time + MONTECARLO_TIMELIMIT:
+                monte_carlo_runs += 1
                 root = self.monte_carlo_root
 
                 # selection
@@ -168,7 +179,7 @@ class Agent:
                 # backpropogate
                 backpropogate(result, child)
 
-
+            print("monte carlo runs:", monte_carlo_runs)
             # selecting highest UBC1 from immediate children
             if self.player == PlayerColor.BLUE:
                 highest_score = -1
