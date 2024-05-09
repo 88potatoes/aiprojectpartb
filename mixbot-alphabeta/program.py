@@ -98,7 +98,7 @@ class Agent:
                 best_score = -float('inf')
                 for move in possible_moves:
                     next_state = get_next_state(self.current_state.state, move, self.player)
-                    next_state_score = minimax(Node(PlayerColor.BLUE, next_state), MINIMAX_DEPTH, False)
+                    next_state_score = minimax(Node(PlayerColor.BLUE, next_state), MINIMAX_DEPTH, False, -float('inf'), float('inf'))
                     print("score:", next_state_score)
                         
 
@@ -246,7 +246,7 @@ def score1(node: Node):
 
 # setting the scoring / evaluation function
 score_function = score2
-def minimax(node: Node, depth: int, isMaximisingPlayer: bool):
+def minimax(node: Node, depth: int, isMaximisingPlayer: bool, alpha: float, beta: float):
 
     possible_moves = get_possible_moves(node.state, node.player)
 
@@ -262,7 +262,9 @@ def minimax(node: Node, depth: int, isMaximisingPlayer: bool):
             
             next_state = get_next_state(node.state, move, node.player)
             # print(render_board(next_state, None, ansi=True))
-            value = max(value, minimax(Node(PlayerColor.BLUE, next_state), depth - 1, False))
+            value = max(value, minimax(Node(PlayerColor.BLUE, next_state), depth - 1, False, alpha, beta))
+            if value > beta:
+                break
         return value
     else:
         # minimising player
@@ -271,8 +273,9 @@ def minimax(node: Node, depth: int, isMaximisingPlayer: bool):
         value = float('inf')
         for move in possible_moves:
             next_state = get_next_state(node.state, move, node.player)
-            value = min(value, minimax(Node(PlayerColor.RED, next_state), depth - 1, True))
-        
+            value = min(value, minimax(Node(PlayerColor.RED, next_state), depth - 1, True, alpha, beta))
+            if value < alpha:
+                break
         return value
 
 
