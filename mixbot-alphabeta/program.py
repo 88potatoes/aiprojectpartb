@@ -15,7 +15,7 @@ EXPANSION_FACTOR = 5
 MINIMAX_DEPTH = 6
 N_RANDOM_MOVES = 6
 EMPTY_SQUARE_CUTOFF = 41
-MINIMAX_EXPANSION_CUTOFF = 10
+MINIMAX_EXPANSION_CUTOFF = 13
 
 def get_next_player(player: PlayerColor):
     if player == PlayerColor.RED:
@@ -265,6 +265,7 @@ def minimax(node: Node, depth: int, isMaximisingPlayer: bool, alpha: float, beta
             value = max(value, minimax(Node(PlayerColor.BLUE, next_state), depth - 1, False, alpha, beta))
             if value > beta:
                 break
+            alpha = max(alpha, value)
         return value
     else:
         # minimising player
@@ -276,6 +277,7 @@ def minimax(node: Node, depth: int, isMaximisingPlayer: bool, alpha: float, beta
             value = min(value, minimax(Node(PlayerColor.RED, next_state), depth - 1, True, alpha, beta))
             if value < alpha:
                 break
+            beta = min(beta, value)
         return value
 
 
